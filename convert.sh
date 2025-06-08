@@ -151,14 +151,24 @@ fi
 # ---------------------------------------------------------
 echo "🔄 Начинаем конвертацию mp3 → wav"
 count=0
-while IFS= read -r mp3file; do
+# Используем process substitution вместо pipe
+while read -r mp3file; do
   wavfile="${mp3file%.mp3}.wav"
-  ffmpeg -loglevel error -y -i "$mp3file" -ar 44100 "$wavfile" \
-    && echo "✅ Сконвертирован: $mp3file → $wavfile" \
-    && ((count++)) \
-    && rm "$mp3file" \
-    && echo "🗑️ Удалён: $mp3file" \
-    || echo "❌ Ошибка: $mp3file"
+
+  # Конвертируем в WAV 44.1 kHz
+  ffmpeg -loglevel error -y -i "$mp3file" -ar 44100 "$wavfile"
+
+  if [ $? -eq 0 ]; then
+    echo "✅ Успешно сконвертирован: $mp3file → $wavfile"
+    ((count++))
+
+    # Удаляем исходный mp3 файл
+    rm "$mp3file"
+    echo "🗑️ Удалён исходный файл: $mp3file"
+  else
+    echo "❌ Ошибка при конвертации: $mp3file"
+  fi
 done < <(find . -type f -iname "*.mp3")
 
+# Итог
 echo "🔚 Всего сконвертировано файлов: $count"
