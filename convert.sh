@@ -1,160 +1,59 @@
 #!/usr/bin/env bash
-# convert.sh — mp3→wav с установкой ffmpeg (через brew или из исходников)
-
 set -euo pipefail
 
-# Папка для исходников и сборки
 BUILD_DIR="$HOME/ffmpeg_build"
 PREFIX="$BUILD_DIR/install"
+FFMPEG_BIN="$PREFIX/bin/ffmpeg"
+
+mkdir -p "$BUILD_DIR"
 export PATH="$PREFIX/bin:$PATH"
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 
-mkdir -p "$BUILD_DIR"
-cd "$BUILD_DIR"
-
-# ---------------------------------------------------------
+# ------------------------
 # Проверка наличия ffmpeg
-# ---------------------------------------------------------
-if command -v ffmpeg &>/dev/null; then
-  echo "✅ ffmpeg уже установлен: $(command -v ffmpeg)"
+# ------------------------
+if command -v ffmpeg &>/dev/null || [ -x "$FFMPEG_BIN" ]; then
+  echo "✅ ffmpeg найден"
 else
-  echo "⚙️ ffmpeg не найден"
+  echo "⚙️ ffmpeg не найден — устанавливаем..."
 
-  # macOS + Homebrew
   if [[ "$(uname)" == "Darwin" ]] && command -v brew &>/dev/null; then
-    echo "🍺 macOS с установленным brew → устанавливаем ffmpeg через brew"
+    echo "🍺 Установка через Homebrew"
     brew install ffmpeg
-    echo "✅ ffmpeg установлен через brew"
   else
-    echo "🔧 Начинаем сборку ffmpeg и зависимостей из исходников..."
+    echo "🔧 Сборка из исходников..."
 
-    nproc_cmd() {
-      command -v nproc >/dev/null && nproc || sysctl -n hw.logicalcpu
-    }
+    cd "$BUILD_DIR"
 
-    build_nasm() {
-      echo "📦 Сборка: nasm"
-      curl -LO https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz
-      tar xzvf nasm-2.15.05.tar.gz && cd nasm-2.15.05
-      ./configure --prefix="$PREFIX"
-      make -j"$(nproc_cmd)" && make install
-      cd ..
-    }
+    curl -LO https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz
+    tar xzvf nasm-2.15.05.tar.gz && cd nasm-2.15.05
+    ./configure --prefix="$PREFIX" && make -j$(nproc || sysctl -n hw.logicalcpu) && make install
+    cd ..
 
-    build_yasm() {
-      echo "📦 Сборка: yasm"
-      curl -LO https://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz
-      tar xzvf yasm-1.3.0.tar.gz && cd yasm-1.3.0
-      ./configure --prefix="$PREFIX"
-      make -j"$(nproc_cmd)" && make install
-      cd ..
-    }
-
-    build_x264() {
-      echo "📦 Сборка: x264"
-      git clone --depth 1 https://code.videolan.org/videolan/x264.git
-      cd x264
-      ./configure --prefix="$PREFIX" --enable-static --disable-opencl
-      make -j"$(nproc_cmd)" && make install
-      cd ..
-    }
-
-    build_x265() {
-      echo "📦 Сборка: x265"
-      git clone https://bitbucket.org/multicoreware/x265_git.git x265
-      cd x265/build/linux || cd x265/source
-      cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DENABLE_SHARED=off ../../source
-      make -j"$(nproc_cmd)" && make install
-      cd "$BUILD_DIR"
-    }
-
-    build_libvpx() {
-      echo "📦 Сборка: libvpx"
-      git clone --depth 1 https://chromium.googlesource.com/webm/libvpx
-      cd libvpx
-      ./configure --prefix="$PREFIX" --disable-examples --disable-unit-tests
-      make -j"$(nproc_cmd)" && make install
-      cd ..
-    }
-
-    build_lame() {
-      echo "📦 Сборка: libmp3lame"
-      curl -LO https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz
-      tar xzvf lame-3.100.tar.gz && cd lame-3.100
-      ./configure --prefix="$PREFIX" --enable-nasm --disable-shared
-      make -j"$(nproc_cmd)" && make install
-      cd ..
-    }
-
-    build_fdk_aac() {
-      echo "📦 Сборка: fdk-aac"
-      git clone --depth 1 https://github.com/mstorsjo/fdk-aac
-      cd fdk-aac
-      autoreconf -fiv
-      ./configure --prefix="$PREFIX" --disable-shared
-      make -j"$(nproc_cmd)" && make install
-      cd ..
-    }
-
-    build_opus() {
-      echo "📦 Сборка: libopus"
-      curl -LO https://downloads.xiph.org/releases/opus/opus-1.3.1.tar.gz
-      tar xzvf opus-1.3.1.tar.gz && cd opus-1.3.1
-      ./configure --prefix="$PREFIX" --disable-shared
-      make -j"$(nproc_cmd)" && make install
-      cd ..
-    }
-
-    build_ffmpeg() {
-      echo "🎬 Сборка: ffmpeg"
-      git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg
-      cd ffmpeg
-      ./configure --prefix="$PREFIX" \
-        --pkg-config-flags="--static" \
-        --extra-cflags="-I$PREFIX/include" \
-        --extra-ldflags="-L$PREFIX/lib" \
-        --extra-libs="-lpthread -lm" \
-        --enable-gpl --enable-nonfree \
-        --enable-libx264 --enable-libx265 \
-        --enable-libvpx --enable-libmp3lame \
-        --enable-libfdk_aac --enable-libopus \
-        --disable-shared --enable-static
-      make -j"$(nproc_cmd)" && make install
-      cd ..
-    }
-
-    # Выполнение всех шагов сборки
-    build_nasm
-    build_yasm
-    build_x264
-    build_x265
-    build_libvpx
-    build_lame
-    build_fdk_aac
-    build_opus
-    build_ffmpeg
-
-    echo "✅ ffmpeg успешно собран и установлен в: $PREFIX"
+    git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg
+    cd ffmpeg
+    ./configure --prefix="$PREFIX" --disable-shared --enable-static
+    make -j$(nproc || sysctl -n hw.logicalcpu) && make install
+    cd ..
   fi
 fi
 
-# ---------------------------------------------------------
-# Конвертация mp3 → wav + удаление + подсчёт
-# ---------------------------------------------------------
-echo "🔄 Начинаем конвертацию mp3 → wav"
-count=0
+# ------------------------
+# Конвертация mp3 → wav
+# ------------------------
+echo "🎧 Конвертация mp3 → wav"
 
-find . -type f -iname "*.mp3" -print0 | while IFS= read -r -d '' mp3file; do
+count=0
+while IFS= read -r -d '' mp3file; do
   wavfile="${mp3file%.mp3}.wav"
 
-  if ffmpeg -loglevel error -y -i "$mp3file" -ar 44100 "$wavfile"; then
-    echo "✅ Успешно сконвертирован: $mp3file → $wavfile"
+  if "$FFMPEG_BIN" -loglevel error -y -i "$mp3file" -ar 44100 "$wavfile"; then
+    echo "✅ $mp3file → $wavfile"
     rm "$mp3file"
-    echo "🗑️ Удалён исходный файл: $mp3file"
-    ((count++))
+    count=$((count + 1))
   else
     echo "❌ Ошибка при конвертации: $mp3file"
   fi
-done
+done < <(find . -type f -iname "*.mp3" -print0)
 
-echo "🔚 Всего сконвертировано файлов: $count"
+echo "🎉 Готово! Конвертировано файлов: $count"
