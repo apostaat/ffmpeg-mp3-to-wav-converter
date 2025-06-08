@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# convert.sh — mp3→wav с установкой ffmpeg (через brew или сборкой из исходников)
+# convert.sh — mp3→wav с установкой ffmpeg (через brew или из исходников)
 
 set -euo pipefail
 
 # Папка для исходников и сборки
 BUILD_DIR="$HOME/ffmpeg_build"
-mkdir -p "$BUILD_DIR"
-cd "$BUILD_DIR"
-
-export PREFIX="$BUILD_DIR/install"
+PREFIX="$BUILD_DIR/install"
 export PATH="$PREFIX/bin:$PATH"
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
 
 # ---------------------------------------------------------
 # Проверка наличия ffmpeg
@@ -20,9 +20,7 @@ if command -v ffmpeg &>/dev/null; then
 else
   echo "⚙️ ffmpeg не найден"
 
-  # ---------------------------------------------------------
-  # macOS + Homebrew: установка через brew
-  # ---------------------------------------------------------
+  # macOS + Homebrew
   if [[ "$(uname)" == "Darwin" ]] && command -v brew &>/dev/null; then
     echo "🍺 macOS с установленным brew → устанавливаем ffmpeg через brew"
     brew install ffmpeg
@@ -30,31 +28,34 @@ else
   else
     echo "🔧 Начинаем сборку ffmpeg и зависимостей из исходников..."
 
+    nproc_cmd() {
+      command -v nproc >/dev/null && nproc || sysctl -n hw.logicalcpu
+    }
+
     build_nasm() {
       echo "📦 Сборка: nasm"
       curl -LO https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz
-      tar xzvf nasm-2.15.05.tar.gz
-      cd nasm-2.15.05
-      ./configure --prefix="$PREFIX" && make -j$(nproc || sysctl -n hw.logicalcpu) && make install
+      tar xzvf nasm-2.15.05.tar.gz && cd nasm-2.15.05
+      ./configure --prefix="$PREFIX"
+      make -j"$(nproc_cmd)" && make install
       cd ..
     }
 
     build_yasm() {
       echo "📦 Сборка: yasm"
       curl -LO https://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz
-      tar xzvf yasm-1.3.0.tar.gz
-      cd yasm-1.3.0
-      ./configure --prefix="$PREFIX" && make -j$(nproc || sysctl -n hw.logicalcpu) && make install
+      tar xzvf yasm-1.3.0.tar.gz && cd yasm-1.3.0
+      ./configure --prefix="$PREFIX"
+      make -j"$(nproc_cmd)" && make install
       cd ..
     }
 
     build_x264() {
       echo "📦 Сборка: x264"
-      git clone https://code.videolan.org/videolan/x264.git
+      git clone --depth 1 https://code.videolan.org/videolan/x264.git
       cd x264
       ./configure --prefix="$PREFIX" --enable-static --disable-opencl
-      make -j$(nproc || sysctl -n hw.logicalcpu)
-      make install
+      make -j"$(nproc_cmd)" && make install
       cd ..
     }
 
@@ -63,29 +64,25 @@ else
       git clone https://bitbucket.org/multicoreware/x265_git.git x265
       cd x265/build/linux || cd x265/source
       cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DENABLE_SHARED=off ../../source
-      make -j$(nproc || sysctl -n hw.logicalcpu)
-      make install
+      make -j"$(nproc_cmd)" && make install
       cd "$BUILD_DIR"
     }
 
     build_libvpx() {
       echo "📦 Сборка: libvpx"
-      git clone https://chromium.googlesource.com/webm/libvpx
+      git clone --depth 1 https://chromium.googlesource.com/webm/libvpx
       cd libvpx
       ./configure --prefix="$PREFIX" --disable-examples --disable-unit-tests
-      make -j$(nproc || sysctl -n hw.logicalcpu)
-      make install
+      make -j"$(nproc_cmd)" && make install
       cd ..
     }
 
     build_lame() {
       echo "📦 Сборка: libmp3lame"
       curl -LO https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz
-      tar xzvf lame-3.100.tar.gz
-      cd lame-3.100
+      tar xzvf lame-3.100.tar.gz && cd lame-3.100
       ./configure --prefix="$PREFIX" --enable-nasm --disable-shared
-      make -j$(nproc || sysctl -n hw.logicalcpu)
-      make install
+      make -j"$(nproc_cmd)" && make install
       cd ..
     }
 
@@ -95,25 +92,22 @@ else
       cd fdk-aac
       autoreconf -fiv
       ./configure --prefix="$PREFIX" --disable-shared
-      make -j$(nproc || sysctl -n hw.logicalcpu)
-      make install
+      make -j"$(nproc_cmd)" && make install
       cd ..
     }
 
     build_opus() {
       echo "📦 Сборка: libopus"
       curl -LO https://downloads.xiph.org/releases/opus/opus-1.3.1.tar.gz
-      tar xzvf opus-1.3.1.tar.gz
-      cd opus-1.3.1
+      tar xzvf opus-1.3.1.tar.gz && cd opus-1.3.1
       ./configure --prefix="$PREFIX" --disable-shared
-      make -j$(nproc || sysctl -n hw.logicalcpu)
-      make install
+      make -j"$(nproc_cmd)" && make install
       cd ..
     }
 
     build_ffmpeg() {
       echo "🎬 Сборка: ffmpeg"
-      git clone https://github.com/FFmpeg/FFmpeg ffmpeg
+      git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg
       cd ffmpeg
       ./configure --prefix="$PREFIX" \
         --pkg-config-flags="--static" \
@@ -125,9 +119,7 @@ else
         --enable-libvpx --enable-libmp3lame \
         --enable-libfdk_aac --enable-libopus \
         --disable-shared --enable-static
-
-      make -j$(nproc || sysctl -n hw.logicalcpu)
-      make install
+      make -j"$(nproc_cmd)" && make install
       cd ..
     }
 
@@ -150,22 +142,19 @@ fi
 # Конвертация mp3 → wav + удаление + подсчёт
 # ---------------------------------------------------------
 echo "🔄 Начинаем конвертацию mp3 → wav"
-find . -type f -iname "*.mp3" | while read -r mp3file; do
-  # Получаем путь к WAV файлу
+count=0
+
+find . -type f -iname "*.mp3" -print0 | while IFS= read -r -d '' mp3file; do
   wavfile="${mp3file%.mp3}.wav"
 
-  # Конвертируем в WAV 44.1 kHz
-  ffmpeg -loglevel error -y -i "$mp3file" -ar 44100 "$wavfile"
-
-  if [ $? -eq 0 ]; then
+  if ffmpeg -loglevel error -y -i "$mp3file" -ar 44100 "$wavfile"; then
     echo "✅ Успешно сконвертирован: $mp3file → $wavfile"
-    ((count++))
-
-    # Удаляем исходный mp3 файл
     rm "$mp3file"
     echo "🗑️ Удалён исходный файл: $mp3file"
+    ((count++))
   else
     echo "❌ Ошибка при конвертации: $mp3file"
   fi
 done
-echo "✅ Конвертация успешно завершена"
+
+echo "🔚 Всего сконвертировано файлов: $count"
