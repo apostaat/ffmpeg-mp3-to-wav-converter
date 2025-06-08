@@ -3,7 +3,6 @@ set -euo pipefail
 
 BUILD_DIR="$HOME/ffmpeg_build"
 PREFIX="$BUILD_DIR/install"
-FFMPEG_BIN="$PREFIX/bin/ffmpeg"
 
 mkdir -p "$BUILD_DIR"
 export PATH="$PREFIX/bin:$PATH"
@@ -12,7 +11,23 @@ export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 # ------------------------
 # Проверка наличия ffmpeg
 # ------------------------
-if command -v ffmpeg &>/dev/null || [ -x "$FFMPEG_BIN" ]; then
+
+# Установим переменную с путем к ffmpeg
+
+if command -v ffmpeg &>/dev/null; then
+  FFMPEG_CMD="$(command -v ffmpeg)"
+else
+  FFMPEG_CMD="$PREFIX/bin/ffmpeg"
+fi
+
+if [ ! -x "$FFMPEG_CMD" ]; then
+  echo "❌ ffmpeg не найден или не исполняемый: $FFMPEG_CMD"
+  exit 1
+fi
+
+echo "✅ Используем ffmpeg: $FFMPEG_CMD"
+
+if command -v ffmpeg &>/dev/null || [ -x "$FFMPEG_CMD" ]; then
   echo "✅ ffmpeg найден"
 else
   echo "⚙️ ffmpeg не найден — устанавливаем..."
@@ -47,7 +62,7 @@ count=0
 while IFS= read -r -d '' mp3file; do
   wavfile="${mp3file%.mp3}.wav"
 
-  if "$FFMPEG_BIN" -loglevel error -y -i "$mp3file" -ar 44100 "$wavfile"; then
+  if "$FFMPEG_CMD" -loglevel error -y -i "$mp3file" -ar 44100 "$wavfile"; then
     echo "✅ $mp3file → $wavfile"
     rm "$mp3file"
     count=$((count + 1))
