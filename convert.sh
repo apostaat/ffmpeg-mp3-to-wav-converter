@@ -152,16 +152,23 @@ fi
 echo "🔄 Начинаем конвертацию mp3 → wav"
 count=0
 
-find . -type f -iname "*.mp3" -print0 | while IFS= read -r -d '' mp3file; do
+# Сохраняем список файлов с нулевым разделителем в массив
+mapfile -d '' mp3files < <(find . -type f -iname "*.mp3" -print0)
+
+for mp3file in "${mp3files[@]}"; do
   wavfile="${mp3file%.mp3}.wav"
   if ffmpeg -loglevel error -y -i "$mp3file" -ar 44100 "$wavfile"; then
     echo "✅ Успешно сконвертирован: $mp3file → $wavfile"
     ((count++))
-    rm "$mp3file"
-    echo "🗑️ Удалён исходный файл: $mp3file"
+    if rm "$mp3file"; then
+      echo "🗑️ Удалён исходный файл: $mp3file"
+    else
+      echo "⚠️ Не удалось удалить: $mp3file"
+    fi
   else
     echo "❌ Ошибка при конвертации: $mp3file"
   fi
 done
 
 echo "🔚 Всего сконвертировано файлов: $count"
+
