@@ -1,0 +1,4 @@
+([('Audio Converter',
+   '/Users/artemapostatov/work/ffmpeg-mp3-to-wav-converter/dist/Audio '
+   'Converter',
+   'EXECUTABLE')],)
