@@ -53,21 +53,61 @@ else
 fi
 
 # ------------------------
-# Конвертация mp3 → wav
+# Функция для транслитерации и очистки имени файла
 # ------------------------
-echo "🎧 Конвертация mp3 → wav"
+sanitize_filename() {
+  local filename="$1"
+  # Транслитерация кириллицы в латиницу
+  filename=$(echo "$filename" | iconv -f utf-8 -t ascii//TRANSLIT)
+  # Удаление специальных символов, оставляем только буквы, цифры, точки и дефисы
+  filename=$(echo "$filename" | sed 's/[^a-zA-Z0-9.-]//g')
+  # Заменяем множественные дефисы на один
+  filename=$(echo "$filename" | sed 's/--*/-/g')
+  # Удаляем дефисы в начале и конце
+  filename=$(echo "$filename" | sed 's/^-//;s/-$//')
+  echo "$filename"
+}
+
+# ------------------------
+# Конвертация аудио → wav
+# ------------------------
+echo "🎧 Конвертация аудио файлов в WAV (44.1 kHz)"
+
+# Поддерживаемые форматы
+AUDIO_EXTENSIONS=("mp3" "wav" "aac" "m4a" "flac" "ogg" "wma" "aiff" "alac")
 
 count=0
-while IFS= read -r -d '' mp3file; do
-  wavfile="${mp3file%.mp3}.wav"
+for ext in "${AUDIO_EXTENSIONS[@]}"; do
+  while IFS= read -r -d '' audiofile; do
+    # Получаем имя файла без расширения
+    filename="${audiofile%.*}"
+    # Получаем расширение файла
+    fileext="${audiofile##*.}"
+    
+    # Пропускаем файлы, которые уже являются WAV
+    if [[ "$fileext" == "wav" ]]; then
+      continue
+    fi
+    
+    # Создаем новое имя файла
+    new_filename=$(sanitize_filename "$filename")
+    wavfile="${new_filename}.wav"
+    
+    # Если файл с таким именем уже существует, добавляем числовой суффикс
+    counter=1
+    while [ -f "$wavfile" ]; do
+      wavfile="${new_filename}_${counter}.wav"
+      counter=$((counter + 1))
+    done
 
-  if "$FFMPEG_CMD" -loglevel error -y -i "$mp3file" -ar 44100 "$wavfile"; then
-    echo "✅ $mp3file → $wavfile"
-    rm "$mp3file"
-    count=$((count + 1))
-  else
-    echo "❌ Ошибка при конвертации: $mp3file"
-  fi
-done < <(find . -type f -iname "*.mp3" -print0)
+    if "$FFMPEG_CMD" -loglevel error -y -i "$audiofile" -ar 44100 "$wavfile"; then
+      echo "✅ $audiofile → $wavfile"
+      rm "$audiofile"
+      count=$((count + 1))
+    else
+      echo "❌ Ошибка при конвертации: $audiofile"
+    fi
+  done < <(find . -type f -iname "*.${ext}" -print0)
+done
 
 echo "🎉 Готово! Конвертировано файлов: $count"
