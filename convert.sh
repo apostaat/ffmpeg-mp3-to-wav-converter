@@ -55,16 +55,37 @@ fi
 # ------------------------
 # Функция для транслитерации и очистки имени файла
 # ------------------------
+transliterate() {
+  local text="$1"
+  
+  # Транслитерация кириллицы в латиницу
+  text=$(echo "$text" | sed '
+    # строчные
+    y/абвгдеёжзийклмнопрстуфхцчшщъыьэюя/abvgdeejzijklmnoprstufhzcss_y_eua/
+    # заглавные
+    y/АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ/ABVGDEEJZIJKLMNOPRSTUFHZCSS_Y_EUA/
+  ')
+  
+  echo "$text"
+}
+
 sanitize_filename() {
   local filename="$1"
-  # Транслитерация кириллицы в латиницу
-  filename=$(echo "$filename" | iconv -f utf-8 -t ascii//TRANSLIT)
-  # Удаление специальных символов, оставляем только буквы, цифры, точки и дефисы
-  filename=$(echo "$filename" | sed 's/[^a-zA-Z0-9.-]//g')
-  # Заменяем множественные дефисы на один
-  filename=$(echo "$filename" | sed 's/--*/-/g')
-  # Удаляем дефисы в начале и конце
-  filename=$(echo "$filename" | sed 's/^-//;s/-$//')
+  
+  # Транслитерация кириллицы
+  filename=$(transliterate "$filename")
+  
+  # Удаляем все специальные символы, оставляем только буквы и цифры
+  filename=$(echo "$filename" | sed 's/[^a-zA-Z0-9]//g')
+  
+  # Если имя файла пустое после всех преобразований, используем "untitled"
+  if [ -z "$filename" ]; then
+    filename="untitled"
+  fi
+  
+  # Приводим к нижнему регистру
+  filename=$(echo "$filename" | tr '[:upper:]' '[:lower:]')
+  
   echo "$filename"
 }
 
@@ -77,12 +98,21 @@ echo "🎧 Конвертация аудио файлов в WAV (44.1 kHz)"
 AUDIO_EXTENSIONS=("mp3" "wav" "aac" "m4a" "flac" "ogg" "wma" "aiff" "alac")
 
 count=0
+errors=0
+
 for ext in "${AUDIO_EXTENSIONS[@]}"; do
   while IFS= read -r -d '' audiofile; do
-    # Получаем имя файла без расширения
-    filename="${audiofile%.*}"
-    # Получаем расширение файла
-    fileext="${audiofile##*.}"
+    # Проверяем существование файла
+    if [ ! -f "$audiofile" ]; then
+      echo "❌ Файл не найден: $audiofile"
+      errors=$((errors + 1))
+      continue
+    fi
+
+    # Получаем директорию и имя файла
+    dirpath=$(dirname "$audiofile")
+    filename=$(basename "$audiofile")
+    fileext="${filename##*.}"
     
     # Пропускаем файлы, которые уже являются WAV
     if [[ "$fileext" == "wav" ]]; then
@@ -90,24 +120,45 @@ for ext in "${AUDIO_EXTENSIONS[@]}"; do
     fi
     
     # Создаем новое имя файла
-    new_filename=$(sanitize_filename "$filename")
-    wavfile="${new_filename}.wav"
+    new_filename=$(sanitize_filename "${filename%.*}")
+    wavfile="${dirpath}/${new_filename}.wav"
     
     # Если файл с таким именем уже существует, добавляем числовой суффикс
     counter=1
     while [ -f "$wavfile" ]; do
-      wavfile="${new_filename}_${counter}.wav"
+      if [ "$new_filename" = "untitled" ]; then
+        wavfile="${dirpath}/untitled${counter}.wav"
+      else
+        wavfile="${dirpath}/${new_filename}_${counter}.wav"
+      fi
       counter=$((counter + 1))
     done
 
-    if "$FFMPEG_CMD" -loglevel error -y -i "$audiofile" -ar 44100 "$wavfile"; then
-      echo "✅ $audiofile → $wavfile"
-      rm "$audiofile"
-      count=$((count + 1))
+    echo "🔄 Конвертация: $audiofile"
+    echo "📝 Новое имя: $wavfile"
+
+    # Конвертируем файл с подробным выводом ошибок
+    if "$FFMPEG_CMD" -loglevel warning -y -i "$audiofile" -ar 44100 "$wavfile" 2> >(tee -a conversion_errors.log >&2); then
+      # Проверяем, что выходной файл существует и не пустой
+      if [ -s "$wavfile" ]; then
+        echo "✅ Успешно: $audiofile → $wavfile"
+        rm "$audiofile"
+        count=$((count + 1))
+      else
+        echo "❌ Ошибка: выходной файл пустой или не создан: $wavfile"
+        errors=$((errors + 1))
+        # Удаляем пустой выходной файл
+        rm -f "$wavfile"
+      fi
     else
       echo "❌ Ошибка при конвертации: $audiofile"
+      errors=$((errors + 1))
     fi
   done < <(find . -type f -iname "*.${ext}" -print0)
 done
 
 echo "🎉 Готово! Конвертировано файлов: $count"
+if [ $errors -gt 0 ]; then
+  echo "⚠️  Количество ошибок: $errors"
+  echo "📋 Подробности ошибок сохранены в файле: conversion_errors.log"
+fi
