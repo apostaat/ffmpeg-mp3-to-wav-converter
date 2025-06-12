@@ -1,10 +1,15 @@
-.PHONY: check-python check-pip venv check-ffmpeg install-deps app clean
+.PHONY: check-python check-pip venv check-ffmpeg install-deps app clean up
 
 # Проверка и установка Python
 check-python:
 	@echo "🔍 Проверка Python..."
 	@if ! command -v python3 &> /dev/null; then \
 		if [ "$(shell uname)" = "Darwin" ]; then \
+			if ! command -v brew &> /dev/null; then \
+				echo "❌ Homebrew не установлен. Пожалуйста, установите Homebrew:"; \
+				echo "   /bin/bash -c \"\$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""; \
+				exit 1; \
+			fi; \
 			echo "📦 Установка Python через Homebrew..."; \
 			brew install python; \
 		elif [ "$(shell uname)" = "Linux" ]; then \
@@ -21,6 +26,11 @@ check-pip: check-python
 	@echo "🔍 Проверка pip..."
 	@if ! command -v pip3 &> /dev/null; then \
 		if [ "$(shell uname)" = "Darwin" ]; then \
+			if ! command -v brew &> /dev/null; then \
+				echo "❌ Homebrew не установлен. Пожалуйста, установите Homebrew:"; \
+				echo "   /bin/bash -c \"\$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""; \
+				exit 1; \
+			fi; \
 			echo "📦 Установка pip через Homebrew..."; \
 			brew install python; \
 		elif [ "$(shell uname)" = "Linux" ]; then \
@@ -37,6 +47,11 @@ check-ffmpeg:
 	@echo "🔍 Проверка FFmpeg..."
 	@if ! command -v ffmpeg &> /dev/null; then \
 		if [ "$(shell uname)" = "Darwin" ]; then \
+			if ! command -v brew &> /dev/null; then \
+				echo "❌ Homebrew не установлен. Пожалуйста, установите Homebrew:"; \
+				echo "   /bin/bash -c \"\$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""; \
+				exit 1; \
+			fi; \
 			echo "📦 Установка FFmpeg через Homebrew..."; \
 			brew install ffmpeg; \
 		elif [ "$(shell uname)" = "Linux" ]; then \
@@ -90,4 +105,8 @@ help:
 	@echo "Доступные команды:"
 	@echo "  make app     - Установить зависимости и запустить приложение"
 	@echo "  make clean   - Очистить временные файлы"
-	@echo "  make help    - Показать это сообщение" 
+	@echo "  make help    - Показать это сообщение"
+
+# Запуск приложения с использованием Docker
+up:
+	docker-compose up --build 
