@@ -3,6 +3,31 @@ import sys
 import os
 import subprocess
 import shutil
+from pathlib import Path
+
+def check_and_install_dependencies():
+    """Check and install required dependencies."""
+    try:
+        import PyQt6
+    except ImportError:
+        print("Installing PyQt6...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "PyQt6"])
+    
+    # Check if ffmpeg is installed
+    if not shutil.which('ffmpeg'):
+        print("Installing ffmpeg...")
+        if sys.platform == 'darwin':  # macOS
+            subprocess.check_call(['brew', 'install', 'ffmpeg'])
+        elif sys.platform == 'linux':  # Linux
+            subprocess.check_call(['apt-get', 'update'])
+            subprocess.check_call(['apt-get', 'install', '-y', 'ffmpeg'])
+        elif sys.platform == 'win32':  # Windows
+            print("Please install ffmpeg manually from https://ffmpeg.org/download.html")
+            sys.exit(1)
+
+# Check and install dependencies before importing PyQt6
+check_and_install_dependencies()
+
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QPushButton, QVBoxLayout, 
                             QWidget, QFileDialog, QLabel, QProgressBar, QTextEdit,
                             QMessageBox)
@@ -95,10 +120,6 @@ class ConversionWorker(QThread):
                     for file in files:
                         if file.lower().endswith(f'.{ext}'):
                             audiofile = os.path.join(root, file)
-                            
-                            # Пропускаем файлы, которые уже являются WAV
-                            if ext == "wav":
-                                continue
                             
                             # Создаем новое имя файла
                             filename = os.path.splitext(file)[0]
