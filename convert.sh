@@ -114,11 +114,6 @@ for ext in "${AUDIO_EXTENSIONS[@]}"; do
     filename=$(basename "$audiofile")
     fileext="${filename##*.}"
     
-    # Пропускаем файлы, которые уже являются WAV
-    if [[ "$fileext" == "wav" ]]; then
-      continue
-    fi
-    
     # Создаем новое имя файла
     new_filename=$(sanitize_filename "${filename%.*}")
     wavfile="${dirpath}/${new_filename}.wav"
