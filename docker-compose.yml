@@ -1,0 +1,14 @@
+version: '3'
+services:
+  converter-app:
+    build: .
+    volumes:
+      - .:/app
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - DISPLAY=${DISPLAY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "6000:6000"
+    privileged: true 

@@ -1,1 +1,8 @@
-PyQt6==6.6.1 
+PyQt6==6.4.2
+PyQt6-Qt6==6.4.2
+PyQt6-sip==13.4.1
+
+# Build dependencies
+pyinstaller>=5.0
+pillow>=9.0
+requests>=2.25 

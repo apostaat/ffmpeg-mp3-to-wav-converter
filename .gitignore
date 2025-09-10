@@ -47,4 +47,8 @@ Thumbs.db
 *.zip
 *.icns
 ffmpeg_bin/
-icon.iconset/ 
+icon.iconset/
+
+# Docker
+.docker/
+docker-compose.override.yml 
