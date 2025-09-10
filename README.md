@@ -57,3 +57,30 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/apostaat/ffmpeg-mp3-to-w
 ```bash
 make up
 ```
+
+## Building Distributables
+
+To create standalone applications for distribution:
+
+### macOS .app Bundle
+```bash
+make build-dist
+```
+This will create a `dist/Audio Converter.app` bundle and a `dist/Audio Converter.dmg` installer.
+
+### Windows .exe
+```bash
+make build-dist
+```
+This will create a `dist/Audio Converter.exe` executable and a `dist/Audio Converter_Windows.zip` archive.
+
+### Manual Build
+You can also run the build script directly:
+```bash
+python3 build_distributables.py
+```
+
+### Clean Build Artifacts
+```bash
+make clean-dist
+```

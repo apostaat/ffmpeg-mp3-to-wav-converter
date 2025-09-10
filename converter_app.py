@@ -7,6 +7,10 @@ from pathlib import Path
 
 def check_and_install_dependencies():
     """Check and install required dependencies."""
+    # Skip dependency installation if running as a bundled application
+    if getattr(sys, 'frozen', False):
+        return
+        
     try:
         import PyQt6
     except ImportError:
