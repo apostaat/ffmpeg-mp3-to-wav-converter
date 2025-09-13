@@ -95,7 +95,7 @@ sanitize_filename() {
 echo "🎧 Конвертация аудио файлов в WAV (44.1 kHz)"
 
 # Поддерживаемые форматы
-AUDIO_EXTENSIONS=("mp3" "wav" "aac" "m4a" "flac" "ogg" "wma" "aiff" "alac")
+AUDIO_EXTENSIONS=("mp3" "wav" "aac" "m4a" "flac" "ogg" "wma" "aiff" "alac" "tak")
 
 count=0
 errors=0
