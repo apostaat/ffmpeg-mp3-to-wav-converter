@@ -117,7 +117,7 @@ class ConversionWorker(QThread):
             error_count = 0
             
             # Поддерживаемые форматы
-            audio_extensions = ["mp3", "wav", "aac", "m4a", "flac", "ogg", "wma", "aiff", "alac"]
+            audio_extensions = ["mp3", "wav", "aac", "m4a", "flac", "ogg", "wma", "aiff", "alac", "tak"]
             
             for ext in audio_extensions:
                 for root, _, files in os.walk(self.directory):
