@@ -1,5 +1,7 @@
 # MP3 to WAV Converter for Roland SP404 MK2
 
+Russian version: `README.ru.md`
+
 <img width="267" height="56" alt="image" src="https://github.com/user-attachments/assets/12741a28-d5af-4824-9374-470dfa0882fe" />
 
 A simple tool that converts all .mp3 files in a folder to 44.1 khz .wav format, preserving filenames, and then deletes the original .mp3 files.
