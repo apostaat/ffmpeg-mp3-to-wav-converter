@@ -264,17 +264,22 @@ class BuildManager:
             
         # Create spec file content
         icon_line = f"icon='{icon_file}'" if icon_file else "icon=None"
-        
+        cwd_repr = repr(os.getcwd())
+
         spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
+
+from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
 
+pyqt6_datas, pyqt6_binaries, pyqt6_hiddenimports = collect_all('PyQt6')
+
 a = Analysis(
     ['converter_app.py'],
-    pathex=[],
-    binaries=[('{ffmpeg_binary}', '.')],
-    datas=[],
-    hiddenimports=['pkgutil', 'PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets'],
+    pathex=[{cwd_repr}],
+    binaries=[('{ffmpeg_binary}', '.')] + pyqt6_binaries,
+    datas=pyqt6_datas,
+    hiddenimports=['pkgutil'] + pyqt6_hiddenimports,
     hookspath=[],
     hooksconfig={{}},
     runtime_hooks=[],

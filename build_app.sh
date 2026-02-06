@@ -70,14 +70,18 @@ echo "📝 Создаем spec файл..."
 cat > "${APP_NAME}.spec" << EOL
 # -*- mode: python ; coding: utf-8 -*-
 
+from PyInstaller.utils.hooks import collect_all
+
 block_cipher = None
+
+pyqt6_datas, pyqt6_binaries, pyqt6_hiddenimports = collect_all('PyQt6')
 
 a = Analysis(
     ['converter_app.py'],
-    pathex=[],
-    binaries=[('${FFMPEG_DIR}/ffmpeg', '.')],  # Include FFmpeg binary
-    datas=[],
-    hiddenimports=[],
+    pathex=['.'],
+    binaries=[('${FFMPEG_DIR}/ffmpeg', '.')] + pyqt6_binaries,  # Include FFmpeg binary
+    datas=pyqt6_datas,
+    hiddenimports=pyqt6_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

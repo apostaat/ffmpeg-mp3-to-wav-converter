@@ -31,8 +31,26 @@ def check_and_install_dependencies():
             print("Please install ffmpeg manually from https://ffmpeg.org/download.html")
             sys.exit(1)
 
+def configure_qt_plugin_path():
+    """Ensure bundled Qt plugins are discoverable in frozen apps."""
+    if not getattr(sys, 'frozen', False):
+        return
+    base = getattr(sys, '_MEIPASS', None)
+    if not base:
+        return
+    candidates = [
+        os.path.join(base, 'PyQt6', 'Qt6', 'plugins'),
+        os.path.join(base, 'Qt6', 'plugins'),
+    ]
+    for path in candidates:
+        if os.path.isdir(path):
+            os.environ.setdefault('QT_QPA_PLATFORM_PLUGIN_PATH', path)
+            os.environ.setdefault('QT_PLUGIN_PATH', path)
+            break
+
 # Check and install dependencies before importing PyQt6
 check_and_install_dependencies()
+configure_qt_plugin_path()
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QPushButton, QVBoxLayout, 
                             QWidget, QFileDialog, QLabel, QProgressBar, QTextEdit,
