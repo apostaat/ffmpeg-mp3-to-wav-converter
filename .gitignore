@@ -46,6 +46,7 @@ Thumbs.db
 *.log
 *.zip
 *.icns
+.AishaDevi-*.wav
 ffmpeg_bin/
 icon.iconset/
 
